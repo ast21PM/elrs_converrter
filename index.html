@@ -88,6 +88,20 @@
 
   footer{margin-top:26px;font-size:.76rem;color:var(--muted);line-height:1.6}
   footer code{font-family:var(--font-mono);color:var(--accent)}
+
+  .memo-note{font-size:.82rem;color:var(--muted);margin:0 0 14px;line-height:1.6}
+  .memo-note code,.memo-note b{color:var(--fg)}
+  .seg{display:inline-flex;gap:4px;background:var(--data-bg);border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:14px;max-width:100%;flex-wrap:wrap}
+  .seg button{font-family:var(--font-ui);font-size:.82rem;font-weight:500;color:var(--muted);background:transparent;border:0;border-radius:6px;padding:6px 12px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:var(--surface)}
+  .tbl-scroll{overflow-x:auto}
+  table.rates{width:100%;border-collapse:collapse;font-size:.82rem;min-width:560px}
+  table.rates th,table.rates td{padding:7px 9px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+  table.rates th{font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.rates td{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--fg)}
+  table.rates td.rate{font-family:var(--font-ui);font-weight:600}
+  table.rates td.idx{color:var(--accent);font-weight:600}
+  table.rates tr.special td:not(.idx){color:var(--muted)}
 </style>
 
 <div class="wrap">
@@ -178,6 +192,85 @@
           <tbody id="uBreak"></tbody>
         </table>
         <p class="hint" style="margin-top:10px">Команда ставит только <b>UID[2..5]</b> — из них считаются FHSS-seed и CRC. <code style="font-family:var(--font-mono)">UID[0..1]</code> на матч линка не влияют.</p>
+      </div>
+    </section>
+
+    <!-- ===================== PACKET RATE MEMO ===================== -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Памятка: packet rate → параметры</h2>
+        <span class="cmd-tag">cmd 0x03</span>
+      </div>
+      <div class="panel-body">
+        <p class="memo-note">Индекс, который принимает <b>SET_PACKET_RATE</b>, отображается в эти параметры в зависимости от радиочипа, под который собрана прошивка. Судя по enum (<code style="font-family:var(--font-mono)">200Hz = 0, 100Hz Full = 1</code>), у тебя сборка под <b>SX127x</b> — таблица 900 МГц. Отдельные SF/BW/CR потом переопределяются командой <b>SET_CONN_PARAMS</b>. Значения — из <code style="font-family:var(--font-mono)">common.cpp</code> ExpressLRS.</p>
+
+        <div class="seg" role="tablist">
+          <button id="segA" class="on" data-tbl="t900">SX127x · 900 МГц</button>
+          <button id="segB" data-tbl="t2g4">SX128x · 2.4 ГГц</button>
+          <button id="segC" data-tbl="tlr">LR1121</button>
+        </div>
+
+        <div class="tbl-scroll" id="t900">
+          <table class="rates">
+            <thead><tr><th>idx</th><th>Rate</th><th>SF</th><th>BW</th><th>CR</th><th>Преамб.</th><th>FHSS</th><th>TLM</th><th>Пакет</th></tr></thead>
+            <tbody>
+              <tr><td class="idx">0</td><td class="rate">200 Hz</td><td>SF6</td><td>500 кГц</td><td>4/7</td><td>8</td><td>4</td><td>1:64</td><td>4B</td></tr>
+              <tr><td class="idx">1</td><td class="rate">100 Hz Full</td><td>SF6</td><td>500 кГц</td><td>4/8</td><td>8</td><td>4</td><td>1:32</td><td>8ch</td></tr>
+              <tr><td class="idx">2</td><td class="rate">100 Hz</td><td>SF7</td><td>500 кГц</td><td>4/7</td><td>8</td><td>4</td><td>1:32</td><td>4B</td></tr>
+              <tr><td class="idx">3</td><td class="rate">50 Hz</td><td>SF8</td><td>500 кГц</td><td>4/7</td><td>10</td><td>4</td><td>1:16</td><td>4B</td></tr>
+              <tr><td class="idx">4</td><td class="rate">25 Hz</td><td>SF9</td><td>500 кГц</td><td>4/7</td><td>10</td><td>2</td><td>1:8</td><td>4B</td></tr>
+              <tr class="special"><td class="idx">5</td><td class="rate">50 Hz DVDA</td><td>SF6</td><td>500 кГц</td><td>4/7</td><td>8</td><td>2</td><td>1:64</td><td>4B ×4</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tbl-scroll" id="t2g4" hidden>
+          <table class="rates">
+            <thead><tr><th>idx</th><th>Rate</th><th>SF / мод.</th><th>BW</th><th>CR</th><th>Преамб.</th><th>FHSS</th><th>TLM</th><th>Пакет</th></tr></thead>
+            <tbody>
+              <tr class="special"><td class="idx">0</td><td class="rate">1000 Hz</td><td>FLRC</td><td>0.6 МГц</td><td>1/2</td><td>32</td><td>2</td><td>1:128</td><td>4B</td></tr>
+              <tr class="special"><td class="idx">1</td><td class="rate">500 Hz</td><td>FLRC</td><td>0.6 МГц</td><td>1/2</td><td>32</td><td>2</td><td>1:128</td><td>4B</td></tr>
+              <tr class="special"><td class="idx">2</td><td class="rate">500 Hz DVDA</td><td>FLRC</td><td>0.6 МГц</td><td>1/2</td><td>32</td><td>2</td><td>1:128</td><td>4B ×2</td></tr>
+              <tr class="special"><td class="idx">3</td><td class="rate">250 Hz DVDA</td><td>FLRC</td><td>0.6 МГц</td><td>1/2</td><td>32</td><td>2</td><td>1:128</td><td>4B ×4</td></tr>
+              <tr><td class="idx">4</td><td class="rate">500 Hz</td><td>SF5</td><td>812.5 кГц</td><td>LI 4/6</td><td>12</td><td>4</td><td>1:128</td><td>4B</td></tr>
+              <tr><td class="idx">5</td><td class="rate">333 Hz Full</td><td>SF5</td><td>812.5 кГц</td><td>LI 4/8</td><td>12</td><td>4</td><td>1:128</td><td>8ch</td></tr>
+              <tr><td class="idx">6</td><td class="rate">250 Hz</td><td>SF6</td><td>812.5 кГц</td><td>LI 4/8</td><td>14</td><td>4</td><td>1:64</td><td>4B</td></tr>
+              <tr><td class="idx">7</td><td class="rate">150 Hz</td><td>SF7</td><td>812.5 кГц</td><td>LI 4/8</td><td>12</td><td>4</td><td>1:32</td><td>4B</td></tr>
+              <tr><td class="idx">8</td><td class="rate">100 Hz Full</td><td>SF7</td><td>812.5 кГц</td><td>LI 4/8</td><td>12</td><td>4</td><td>1:32</td><td>8ch</td></tr>
+              <tr><td class="idx">9</td><td class="rate">50 Hz</td><td>SF8</td><td>812.5 кГц</td><td>LI 4/8</td><td>12</td><td>2</td><td>1:16</td><td>4B</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tbl-scroll" id="tlr" hidden>
+          <table class="rates">
+            <thead><tr><th>idx</th><th>Rate</th><th>SF / мод.</th><th>BW</th><th>CR</th><th>Преамб.</th><th>FHSS</th><th>TLM</th><th>Пакет</th></tr></thead>
+            <tbody>
+              <tr class="special"><td class="idx">0</td><td class="rate">1000 Hz Full · 900</td><td>GFSK</td><td>467 кГц</td><td>—</td><td>16</td><td>2</td><td>1:128</td><td>8ch</td></tr>
+              <tr><td class="idx">1</td><td class="rate">250 Hz · 900</td><td>SF5</td><td>500 кГц</td><td>4/8</td><td>8</td><td>4</td><td>1:64</td><td>4B</td></tr>
+              <tr><td class="idx">2</td><td class="rate">200 Hz Full · 900</td><td>SF5</td><td>500 кГц</td><td>4/7</td><td>8</td><td>4</td><td>1:64</td><td>8ch</td></tr>
+              <tr><td class="idx">3</td><td class="rate">200 Hz · 900</td><td>SF6</td><td>500 кГц</td><td>4/7</td><td>8</td><td>4</td><td>1:64</td><td>4B</td></tr>
+              <tr><td class="idx">4</td><td class="rate">100 Hz Full · 900</td><td>SF6</td><td>500 кГц</td><td>4/8</td><td>8</td><td>4</td><td>1:32</td><td>8ch</td></tr>
+              <tr><td class="idx">5</td><td class="rate">100 Hz · 900</td><td>SF7</td><td>500 кГц</td><td>4/7</td><td>8</td><td>4</td><td>1:32</td><td>4B</td></tr>
+              <tr><td class="idx">6</td><td class="rate">50 Hz · 900</td><td>SF8</td><td>500 кГц</td><td>4/7</td><td>10</td><td>4</td><td>1:16</td><td>4B</td></tr>
+              <tr><td class="idx">7</td><td class="rate">25 Hz · 900</td><td>SF9</td><td>500 кГц</td><td>4/7</td><td>10</td><td>2</td><td>1:8</td><td>4B</td></tr>
+              <tr class="special"><td class="idx">8</td><td class="rate">50 Hz DVDA · 900</td><td>SF6</td><td>500 кГц</td><td>4/7</td><td>8</td><td>2</td><td>1:64</td><td>4B ×4</td></tr>
+              <tr class="special"><td class="idx">9</td><td class="rate">1000 Hz · 2.4</td><td>GFSK</td><td>467 кГц</td><td>—</td><td>16</td><td>2</td><td>1:128</td><td>4B</td></tr>
+              <tr class="special"><td class="idx">10</td><td class="rate">500 Hz DVDA · 2.4</td><td>GFSK</td><td>467 кГц</td><td>—</td><td>16</td><td>2</td><td>1:128</td><td>4B ×2</td></tr>
+              <tr class="special"><td class="idx">11</td><td class="rate">250 Hz DVDA · 2.4</td><td>GFSK</td><td>467 кГц</td><td>—</td><td>16</td><td>2</td><td>1:128</td><td>4B ×4</td></tr>
+              <tr><td class="idx">12</td><td class="rate">500 Hz · 2.4</td><td>SF5</td><td>812.5 кГц</td><td>LI 4/6</td><td>12</td><td>4</td><td>1:128</td><td>4B</td></tr>
+              <tr><td class="idx">13</td><td class="rate">333 Hz Full · 2.4</td><td>SF5</td><td>812.5 кГц</td><td>LI 4/8</td><td>12</td><td>4</td><td>1:128</td><td>8ch</td></tr>
+              <tr><td class="idx">14</td><td class="rate">250 Hz · 2.4</td><td>SF6</td><td>812.5 кГц</td><td>LI 4/8</td><td>14</td><td>4</td><td>1:64</td><td>4B</td></tr>
+              <tr><td class="idx">15</td><td class="rate">150 Hz · 2.4</td><td>SF7</td><td>812.5 кГц</td><td>LI 4/8</td><td>12</td><td>4</td><td>1:32</td><td>4B</td></tr>
+              <tr><td class="idx">16</td><td class="rate">100 Hz Full · 2.4</td><td>SF7</td><td>812.5 кГц</td><td>LI 4/8</td><td>12</td><td>4</td><td>1:32</td><td>8ch</td></tr>
+              <tr><td class="idx">17</td><td class="rate">50 Hz · 2.4</td><td>SF8</td><td>812.5 кГц</td><td>LI 4/8</td><td>12</td><td>2</td><td>1:16</td><td>4B</td></tr>
+              <tr class="special"><td class="idx">18</td><td class="rate">150 Hz DUAL *</td><td>SF6</td><td>500 кГц</td><td>4/8</td><td>12</td><td>4</td><td>1:32</td><td>4B</td></tr>
+              <tr class="special"><td class="idx">19</td><td class="rate">100 Hz Full DUAL *</td><td>SF6</td><td>500 кГц</td><td>4/8</td><td>18</td><td>4</td><td>1:32</td><td>8ch</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="hint" style="margin-top:12px">FLRC — не LoRa: битрейт 0.65 Мбит/с, гаусс-фильтр BT=1, без SF. GFSK (в LR1121) — тоже без SF/CR: битрейт 300 кбит/с, девиация 100 кГц. «Пакет»: 4B — стандартный 4-канальный OTA-пакет, 8ch (Full) — 8-битные полноразмерные каналы. FHSS — интервал хопов частоты. TLM — телеметрия по умолчанию.<br><b>* DUAL</b> у LR1121 использует две полосы сразу — в таблице показана 900-полоса; 2.4-полоса: idx 18 → SF7 / 812.5 кГц / LI 4/6, idx 19 → SF7 / 812.5 кГц / LI 4/8. LR2021 имеет свою, ещё более длинную таблицу.</p>
       </div>
     </section>
 
@@ -329,4 +422,17 @@ document.querySelectorAll('.copy').forEach(function(btn){
 ['fStart','fEnd','fCh'].forEach(function(id){$(id).addEventListener('input',updFreq);});
 $('phrase').addEventListener('input',updUid);
 updFreq(); updUid();
+
+/* ---- memo band toggle ---- */
+(function(){
+  var segs=[['segA','t900'],['segB','t2g4'],['segC','tlr']];
+  function show(id){
+    segs.forEach(function(s){
+      var on=s[1]===id;
+      document.getElementById(s[1]).hidden=!on;
+      document.getElementById(s[0]).classList.toggle('on',on);
+    });
+  }
+  segs.forEach(function(s){document.getElementById(s[0]).addEventListener('click',function(){show(s[1]);});});
+})();
 </script>
