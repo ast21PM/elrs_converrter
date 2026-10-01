@@ -103,6 +103,26 @@
   table.rates td.idx{color:var(--accent);font-weight:600}
   table.rates td.hex{color:var(--muted)}
   table.rates tr.special td:not(.idx){color:var(--muted)}
+
+  ol.flow{list-style:none;counter-reset:step;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+  ol.flow>li{counter-increment:step;display:grid;grid-template-columns:34px 1fr;gap:14px;align-items:start}
+  ol.flow>li::before{content:counter(step);grid-row:1/3;width:34px;height:34px;border-radius:50%;
+    background:var(--accent);color:var(--surface);font-family:var(--font-mono);font-weight:600;font-size:1rem;
+    display:grid;place-items:center}
+  .flow .f-title{font-weight:600;font-size:.95rem;margin:4px 0 0}
+  .flow .f-desc{font-size:.84rem;color:var(--muted);margin:5px 0 0;line-height:1.55}
+  .flow .f-desc code{font-family:var(--font-mono);color:var(--accent)}
+  .flow .f-cmd{margin:9px 0 0;grid-column:2}
+  .cmd-line{display:flex;align-items:center;gap:10px;font-family:var(--font-mono);font-size:.95rem;font-weight:500;
+    color:var(--data-fg);background:var(--data-bg);border:1px solid var(--border);border-left:3px solid var(--accent-line);
+    border-radius:9px;padding:10px 13px;overflow-x:auto;white-space:nowrap}
+  .cmd-line .c-note{font-family:var(--font-ui);font-size:.8rem;font-weight:400;color:var(--muted);white-space:normal}
+  .ant-wrap{margin-top:4px}
+  .ant-wrap .f-desc{margin-bottom:10px}
+  table.ant{width:100%;border-collapse:collapse;font-size:.85rem;max-width:380px}
+  table.ant td{padding:6px 10px;border-bottom:1px solid var(--border)}
+  table.ant td.cmd{font-family:var(--font-mono);font-weight:500;color:var(--data-fg);white-space:nowrap}
+  table.ant td.name{color:var(--muted)}
 </style>
 
 <div class="wrap">
@@ -268,6 +288,58 @@
         </div>
 
         <p class="hint" style="margin-top:12px">FLRC — не LoRa: битрейт 0.65 Мбит/с, гаусс-фильтр BT=1, без SF. GFSK (в LR1121) — тоже без SF/CR: битрейт 300 кбит/с, девиация 100 кГц. «Пакет»: 4B — стандартный 4-канальный OTA-пакет, 8ch (Full) — 8-битные полноразмерные каналы. FHSS — интервал хопов частоты. TLM — телеметрия по умолчанию.<br><b>* DUAL</b> у LR1121 использует две полосы сразу — в таблице показана 900-полоса; 2.4-полоса: idx 10 (0A) → SF7 / 812.5 кГц / LI 4/6, idx 11 (0B) → SF7 / 812.5 кГц / LI 4/8.</p>
+      </div>
+    </section>
+
+    <!-- ===================== WORKFLOW ===================== -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Порядок работы: от настройки до прослушки</h2>
+        <span class="cmd-tag">по шагам</span>
+      </div>
+      <div class="panel-body">
+        <p class="memo-note">Типовая последовательность команд: задаёшь линк (рейт → мощность → частота → UID) и запускаешь приём. Каждая команда — отдельное UART-сообщение с преамбулой <code style="font-family:var(--font-mono)">AB CD</code>; шли по одной за раз.</p>
+
+        <ol class="flow">
+          <li>
+            <div class="f-title">Packet rate</div>
+            <p class="f-desc">Индексом из стандартных значений (<code>200 Hz = 0</code>, <code>100 Hz Full = 1</code> и т.д.) — вместе с ним подтягиваются связанные SF/BW/CR из таблицы выше. Для своего чипа бери индекс из вкладки <b>LR1121</b>.</p>
+            <div class="f-cmd"><div class="cmd-line">AB CD 03 00 <span class="c-note">→ 200 Hz</span></div></div>
+          </li>
+          <li>
+            <div class="f-title">Мощность</div>
+            <p class="f-desc">Из enum-а, от <code>0</code> до <code>6</code>: <code>6</code> — 1 Вт, <code>5</code> — 500 мВт (дальше вниз по убыванию).</p>
+            <div class="f-cmd"><div class="cmd-line">AB CD 04 06 <span class="c-note">→ 1 Вт</span></div></div>
+          </li>
+          <li>
+            <div class="f-title">Частота и каналы</div>
+            <p class="f-desc">Начало, конец диапазона и число каналов. Байты бери из блока <b>SET_FREQ</b> выше — например, 510–540 МГц, 40 каналов.</p>
+            <div class="f-cmd"><div class="cmd-line">AB CD 07 80 FB 65 1E 00 BF 2F 20 28 00 00 00 <span class="c-note">→ 510–540 МГц, 40 кан.</span></div></div>
+          </li>
+          <li>
+            <div class="f-title">UID (последние 4 байта)</div>
+            <p class="f-desc">Просто вписываешь то, что выдал блок <b>bind phrase → UID</b>. Например, для фразы <code>TEST12</code>.</p>
+            <div class="f-cmd"><div class="cmd-line">AB CD 06 46 77 CF F3 <span class="c-note">→ UID от TEST12</span></div></div>
+          </li>
+          <li>
+            <div class="f-title">Начать прослушивание эфира и подавление </div>
+            <p class="f-desc">Запускает приём и подавление на заданных параметрах..</p>
+            <div class="f-cmd"><div class="cmd-line">AB CD 08 <span class="c-note">→ старт подавления</span></div></div>
+          </li>
+        </ol>
+
+        <div class="ant-wrap" style="margin-top:20px">
+          <div class="out-label" style="margin-bottom:8px"><span>Если нужно переключить антенну — cmd 0x0D</span></div>
+          <p class="f-desc" style="margin:0 0 10px">Отдельная команда, вне основной последовательности. Последний байт — режим антенны:</p>
+          <table class="ant">
+            <tbody>
+              <tr><td class="cmd">AB CD 0D 00</td><td class="name">Gemini (обе)</td></tr>
+              <tr><td class="cmd">AB CD 0D 01</td><td class="name">Антенна 1</td></tr>
+              <tr><td class="cmd">AB CD 0D 02</td><td class="name">Антенна 2</td></tr>
+              <tr><td class="cmd">AB CD 0D 03</td><td class="name">Switch (автопереключение)</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
