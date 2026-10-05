@@ -216,6 +216,44 @@
       </div>
     </section>
 
+    <!-- ===================== UID (DECIMAL BYTES) → SET_UID ===================== -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>UID (байты через запятую) → SET_UID</h2>
+        <span class="cmd-tag">cmd 0x06</span>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="uidDecIn">UID десятичными байтами</label>
+          <input type="text" id="uidDecIn" value="0,0,106,37,157,22" autocomplete="off" spellcheck="false">
+          <p class="hint">Готовый UID в виде 6 байт через запятую — просто переводим в hex. Разделители: запятая, пробел или точка.</p>
+        </div>
+
+        <div class="uid-line" style="margin-top:16px">
+          <div>
+            <div class="k">UID (hex, все 6 байт)</div>
+            <div class="v" id="uidDecHex">—</div>
+          </div>
+        </div>
+
+        <div class="out">
+          <div class="out-label">
+            <span>Посылка (шлёт UID[2..5])</span>
+            <button class="copy" data-copy="uDecPacket">Копировать</button>
+          </div>
+          <div class="packet" id="uDecPacket">—</div>
+        </div>
+
+        <div class="warn" id="uDecWarn"></div>
+
+        <table class="bd">
+          <thead><tr><th>Индекс</th><th>dec</th><th>hex</th><th>В команде</th></tr></thead>
+          <tbody id="uDecBreak"></tbody>
+        </table>
+        <p class="hint" style="margin-top:10px">То же, что блок выше, но на вход — готовый UID числами (например, как его показывает веб-морда), а не bind phrase. Уходят те же <b>UID[2..5]</b>.</p>
+      </div>
+    </section>
+
     <!-- ===================== PACKET RATE MEMO ===================== -->
     <section class="panel">
       <div class="panel-head">
@@ -298,9 +336,19 @@
         <span class="cmd-tag">по шагам</span>
       </div>
       <div class="panel-body">
-        <p class="memo-note">Типовая последовательность команд: задаёшь линк (рейт → мощность → частота → UID) и запускаешь приём. Каждая команда — отдельное UART-сообщение с преамбулой <code style="font-family:var(--font-mono)">AB CD</code>; шли по одной за раз.</p>
+        <p class="memo-note">Типовая последовательность команд: задаёшь линк (UID → частота → рейт → мощность) и запускаешь приём. Каждая команда — отдельное UART-сообщение с преамбулой <code style="font-family:var(--font-mono)">AB CD</code>; шли по одной за раз.</p>
 
         <ol class="flow">
+          <li>
+            <div class="f-title">UID (последние 4 байта)</div>
+            <p class="f-desc">Просто вписываешь то, что выдал блок <b>bind phrase → UID</b>. Например, для фразы <code>TEST12</code>.</p>
+            <div class="f-cmd"><div class="cmd-line">AB CD 06 46 77 CF F3 <span class="c-note">→ UID от TEST12</span></div></div>
+          </li>
+          <li>
+            <div class="f-title">Частота и каналы</div>
+            <p class="f-desc">Начало, конец диапазона и число каналов. Байты бери из блока <b>SET_FREQ</b> выше — например, 510–540 МГц, 40 каналов.</p>
+            <div class="f-cmd"><div class="cmd-line">AB CD 07 80 FB 65 1E 00 BF 2F 20 28 00 00 00 <span class="c-note">→ 510–540 МГц, 40 кан.</span></div></div>
+          </li>
           <li>
             <div class="f-title">Packet rate</div>
             <p class="f-desc">Индексом из стандартных значений (<code>200 Hz = 0</code>, <code>100 Hz Full = 1</code> и т.д.) — вместе с ним подтягиваются связанные SF/BW/CR из таблицы выше. Для своего чипа бери индекс из вкладки <b>LR1121</b>.</p>
@@ -310,16 +358,6 @@
             <div class="f-title">Мощность</div>
             <p class="f-desc">Из enum-а, от <code>0</code> до <code>6</code>: <code>6</code> — 1 Вт, <code>5</code> — 500 мВт (дальше вниз по убыванию).</p>
             <div class="f-cmd"><div class="cmd-line">AB CD 04 06 <span class="c-note">→ 1 Вт</span></div></div>
-          </li>
-          <li>
-            <div class="f-title">Частота и каналы</div>
-            <p class="f-desc">Начало, конец диапазона и число каналов. Байты бери из блока <b>SET_FREQ</b> выше — например, 510–540 МГц, 40 каналов.</p>
-            <div class="f-cmd"><div class="cmd-line">AB CD 07 80 FB 65 1E 00 BF 2F 20 28 00 00 00 <span class="c-note">→ 510–540 МГц, 40 кан.</span></div></div>
-          </li>
-          <li>
-            <div class="f-title">UID (последние 4 байта)</div>
-            <p class="f-desc">Просто вписываешь то, что выдал блок <b>bind phrase → UID</b>. Например, для фразы <code>TEST12</code>.</p>
-            <div class="f-cmd"><div class="cmd-line">AB CD 06 46 77 CF F3 <span class="c-note">→ UID от TEST12</span></div></div>
           </li>
           <li>
             <div class="f-title">Начать прослушивание эфира и подавление </div>
@@ -455,6 +493,44 @@ function updUid(){
   }).join('');
 }
 
+/* ---- SET_UID from decimal bytes ---- */
+function updUidDec(){
+  var raw=$('uidDecIn').value;
+  var warn=$('uDecWarn'), hexEl=$('uidDecHex'), pktEl=$('uDecPacket'), br=$('uDecBreak');
+  br.innerHTML=''; warn.className='warn';
+  var parts=raw.split(/[\s,.]+/).filter(function(x){return x!=='';});
+  if(parts.length===0){ hexEl.textContent='—'; pktEl.textContent='—'; return; }
+
+  var bytes=[], bad=[];
+  parts.forEach(function(p){
+    var n=parseInt(p,10);
+    if(isNaN(n)||n<0||n>255||!/^\d+$/.test(p)) bad.push(p);
+    else bytes.push(n);
+  });
+
+  var msgs=[];
+  if(bad.length) msgs.push('Не байты (0–255): '+bad.join(', '));
+  if(bytes.length!==6 && bad.length===0) msgs.push('Нужно ровно 6 байт, а получено '+bytes.length+'. Шлём то, что есть.');
+  if(msgs.length){ warn.className='warn show'; warn.innerHTML=msgs.join('<br>'); }
+
+  hexEl.textContent = bytes.length ? hxs(bytes) : '—';
+
+  // bytes UID[2..5] go in the command
+  if(bytes.length>=3){
+    var pkt=PRE.concat([0x06], bytes.slice(2,6));
+    pktEl.textContent=hxs(pkt);
+  } else {
+    pktEl.textContent='—';
+  }
+
+  br.innerHTML=bytes.map(function(b,i){
+    var inCmd=i>=2 && i<=5;
+    return '<tr class="'+(inCmd?'b-sent':'b-skip')+'">'+
+      '<td>UID['+i+']</td><td>'+b+'</td><td>'+hx(b)+'</td>'+
+      '<td>'+(inCmd?'да':'—')+'</td></tr>';
+  }).join('');
+}
+
 /* ---- copy ---- */
 function copyText(txt,btn){
   function ok(){var o=btn.textContent;btn.textContent='Скопировано';btn.classList.add('done');
@@ -490,7 +566,8 @@ document.querySelectorAll('.copy').forEach(function(btn){
 /* ---- wire up ---- */
 ['fStart','fEnd','fCh'].forEach(function(id){$(id).addEventListener('input',updFreq);});
 $('phrase').addEventListener('input',updUid);
-updFreq(); updUid();
+$('uidDecIn').addEventListener('input',updUidDec);
+updFreq(); updUid(); updUidDec();
 
 /* ---- memo band toggle ---- */
 (function(){
